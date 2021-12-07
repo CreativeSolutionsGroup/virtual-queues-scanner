@@ -129,7 +129,7 @@ export default class Scanner extends Component {
             console.log("Student ID Card");
             let studentID = qrData.substring(6, 13);
             console.log(studentID);
-            this.scanStudentID(studentID);
+            //this.scanStudentID(studentID);
         } 
         else {
             this.startPopup("invalid");
@@ -470,11 +470,11 @@ export default class Scanner extends Component {
                                 facingMode={this.state.scannerMode === 1 ? 'user' : 'environment'}
                             /> */}
                             <BarcodeScannerComponent
-                                constraints={{
-                                    aspectRatio: 1,
-                                    width: {exact: 500},
-                                    height: {exact: 500}
-                                }}
+                                videoConstraints={
+                                    {
+                                        aspectRatio: 1
+                                    }
+                                }
                                 onUpdate={(err, result) => {
                                   if (result) {
                                     this.handleScan(result.text);
