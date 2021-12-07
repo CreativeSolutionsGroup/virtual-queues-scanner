@@ -1,5 +1,6 @@
 import React, { Component } from 'react'
 import QrReader from 'react-qr-reader'
+import BarcodeScannerComponent from "react-qr-barcode-scanner";
 import { Modal, Icon, Button, Image, Grid, Accordion, AccordionContent, AccordionTitle, Divider, Transition, Loader, Dimmer} from 'semantic-ui-react'
 import axios from "axios";
 import smart_events_logo from "../images/smart-events-logo.png";
@@ -123,7 +124,14 @@ export default class Scanner extends Component {
                         }
                     }
                 });
-        } else {
+        }
+        else if (/^[0-9]{14}$/.test("" + qrData)) {
+            console.log("Student ID Card");
+            let studentID = qrData.substring(6, 13);
+            console.log(studentID);
+            this.scanStudentID(studentID);
+        } 
+        else {
             this.startPopup("invalid");
         }
     }
@@ -147,6 +155,61 @@ export default class Scanner extends Component {
             });
     }
 
+    scanStudentID(studentID){
+        this.getEngagements()
+        .then(engagements => {
+            if (engagements && engagements.length) {
+                // check if student id matches engagement keyword (using regex) and is live
+                const matches = engagements.filter(eng => 
+                    RegExp(eng.keyword, "i").test(studentID) && this.isLiveEngagement(eng)
+                );
+
+                if (matches && matches.length) {
+                    // use the first found match
+                    let engagement = matches[0];
+                    this.createNewEngagee(studentID, engagement);
+                } else {
+                    this.startPopup("error-card");
+                }
+            }
+        });
+    }
+
+    createNewEngagee(message, engagement) {
+        axios.post(this.serverAddress + "/api/engagees", {
+            engagement_id: engagement._id,
+            phone: "Scanned",
+            message_received: message
+        })
+        .then((response) => {
+            this.startPopup("scanned-card");
+        })
+        .catch((error) => { 
+            console.log(error) 
+            alert("Error: " + error);
+            this.startPopup("error-card");
+        });
+    }
+
+    getEngagements(){
+        return new Promise((resolve, reject) => {
+            axios.get(this.serverAddress + "/api/engagements")
+              .then((response) => {
+                resolve(response.data.data);
+              })
+              .catch((error) => {
+                console.log(error);
+                reject();
+              })
+         });
+    }
+    
+    isLiveEngagement(engagement)
+    {
+      let time = new Date();
+      return new Date(engagement.start_time) <= time && time <= new Date(engagement.end_time)
+    }
+
     startPopup(type) {
         let text = "";
         let icon = "";
@@ -157,6 +220,14 @@ export default class Scanner extends Component {
         else if (type === "scanned") {
             text = "Scanned Ticket";
             icon = "check"
+        }
+        else if (type === "scanned-card") {
+            text = "Scanned Card";
+            icon = "check"
+        }
+        else if (type === "error-card") {
+            text = "Error Scanning Card";
+            icon = "ban"
         }
         else if (type === "rescan") {
             text = "Already scanned";
@@ -291,7 +362,7 @@ export default class Scanner extends Component {
                         <div style={{ display: 'flex', flexDirection: 'row' }}>
                             <Icon name='dropdown' style={{ marginTop: 'auto', marginBottom: 'auto' }} />
                             <h2 style={{ marginTop: 'auto', marginBottom: 'auto' }}>
-                                {this.state.attractionNames[key] == undefined ? "UNKNOWN ATTRACTION" : this.state.attractionNames[key]}
+                                {this.state.attractionNames[key] === undefined ? "UNKNOWN ATTRACTION" : this.state.attractionNames[key]}
                             </h2>
                         </div>
                     </AccordionTitle>
@@ -367,10 +438,10 @@ export default class Scanner extends Component {
                 <div>
                     <div style={{ display: 'flex', justifyContent: 'center', marginTop: 10 }}>
                         <div style={{ width: "90%" }}>
-                            <Image src={smart_events_logo} size='medium' centered />
+                            <Image src={smart_events_logo} size='medium' centered alt='Smart Events Logo' />
                             <div style={{ display: 'flex', flexDirection: 'row' }}>
-                                <Icon name='ticket' size='big' style={{ marginLeft: 'auto' }}></Icon>
-                                <h3 style={{ marginTop: 'auto', marginBottom: 'auto', marginLeft: 5, marginRight: 'auto' }}>Ticket Scanner</h3>
+                                <Icon name='object group outline' size='big' style={{ marginLeft: 'auto' }}></Icon>
+                                <h3 style={{ marginTop: 'auto', marginBottom: 'auto', marginLeft: 5, marginRight: 'auto' }}>Scanner</h3>
                             </div>
                         </div>
                     </div>
@@ -392,10 +463,23 @@ export default class Scanner extends Component {
                                 }, 3000);
                             }}
                         >
-                            <QrReader
+                            {/* <QrReader
                                 delay={300}
                                 onError={this.handleError}
                                 onScan={this.handleScan}
+                                facingMode={this.state.scannerMode === 1 ? 'user' : 'environment'}
+                            /> */}
+                            <BarcodeScannerComponent
+                                constraints={{
+                                    aspectRatio: 1,
+                                    width: {exact: 500},
+                                    height: {exact: 500}
+                                }}
+                                onUpdate={(err, result) => {
+                                  if (result) {
+                                    this.handleScan(result.text);
+                                  }
+                                }}
                                 facingMode={this.state.scannerMode === 1 ? 'user' : 'environment'}
                             />
                         </div>
@@ -407,7 +491,7 @@ export default class Scanner extends Component {
                             </div> 
                         : ""}
                     </div> : ""}
-                    {this.isScannerOn() && this.state.showTapHint ? <div style={{ marginLeft: 'auto', marginRight: 'auto' }}><h2>Tap to Scan Ticket</h2></div> : ""}
+                    {this.isScannerOn() && this.state.showTapHint ? <div style={{ marginLeft: 'auto', marginRight: 'auto' }}><h2>Tap to Scan</h2></div> : ""}
                     
                     {!this.isScannerOn() ?
                         <div style={{ margin: 'auto' }}>
@@ -430,6 +514,7 @@ export default class Scanner extends Component {
                                     size="massive"
                                     icon
                                     color='orange'
+                                    aria-label='Ticket Info'
                                 >
                                     <Icon name="ticket" />
                                 </Button>
@@ -443,6 +528,7 @@ export default class Scanner extends Component {
                                     size="massive"
                                     icon
                                     color={this.getCameraButtonColor()}
+                                    aria-label='Camera Mode'
                                 >
                                     <Icon name={this.getCameraButtonIcon()} />
                                 </Button>
@@ -456,6 +542,7 @@ export default class Scanner extends Component {
                                     size="massive"
                                     color='pink'
                                     icon
+                                    aria-label='QR Codes'
                                 >
                                     <Icon name="linkify" />
                                 </Button>
