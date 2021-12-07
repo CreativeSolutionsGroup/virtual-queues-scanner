@@ -129,7 +129,7 @@ export default class Scanner extends Component {
             console.log("Student ID Card");
             let studentID = qrData.substring(6, 13);
             console.log(studentID);
-            //this.scanStudentID(studentID);
+            this.scanStudentID(studentID);
         } 
         else {
             this.startPopup("invalid");
