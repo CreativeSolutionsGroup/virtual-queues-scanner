@@ -12,6 +12,7 @@ export default class Scanner extends Component {
     state = {
         scannerMode: 0,
         result: 'No result',
+        seesData: false,
         isScanning: false,
         popupOpen: false,
         popupIcon: "",
@@ -470,15 +471,20 @@ export default class Scanner extends Component {
                                 facingMode={this.state.scannerMode === 1 ? 'user' : 'environment'}
                             /> */}
                             <BarcodeScannerComponent
+                                delay={300}
                                 videoConstraints={
                                     {
-                                        aspectRatio: 1
+                                        aspectRatio: 1,
+                                        facingMode: this.state.scannerMode === 1 ? 'user' : 'environment'
                                     }
                                 }
                                 onUpdate={(err, result) => {
                                   if (result) {
+                                    //console.log(result.text);
+            
                                     this.handleScan(result.text);
                                   }
+                                  this.setState({seesData: (result !== undefined && result.text !== undefined && result.text.length > 0)})
                                 }}
                                 facingMode={this.state.scannerMode === 1 ? 'user' : 'environment'}
                             />
@@ -491,6 +497,7 @@ export default class Scanner extends Component {
                             </div> 
                         : ""}
                     </div> : ""}
+                    {this.isScannerOn() && this.state.seesData ? <div style={{ marginLeft: 'auto', marginRight: 'auto' }}><Icon name='check' size='huge' color='green'></Icon></div> : ""}
                     {this.isScannerOn() && this.state.showTapHint ? <div style={{ marginLeft: 'auto', marginRight: 'auto' }}><h2>Tap to Scan</h2></div> : ""}
                     
                     {!this.isScannerOn() ?
